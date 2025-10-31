@@ -13,9 +13,10 @@ import java.io.Serializable;
 public abstract class Base implements Serializable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     protected Long id;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean activo = true;
 

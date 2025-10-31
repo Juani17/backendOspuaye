@@ -2,9 +2,12 @@ package com.Ospuaye.BackendOspuaye.Entity;
 
 import com.Ospuaye.BackendOspuaye.Entity.Enum.EstadoPersona;
 import com.Ospuaye.BackendOspuaye.Entity.Enum.Sexo;
+import com.Ospuaye.BackendOspuaye.Entity.Enum.TipoDocumento;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.util.Date;
 
 @Entity
 @Table(name = "personas")
@@ -18,16 +21,23 @@ public abstract class Persona extends Base {
     private String nombre;
     private String apellido;
 
-    @Column(unique = true)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_documento")
+    private TipoDocumento tipoDocumento;
+
+    @Column
     private Long dni;
 
-    @Column(unique = true)
+    @Column
     private Long cuil;
 
     private Long telefono;
 
     @Column(name = "correo_electronico")
     private String correoElectronico;
+
+    @Column(name = "fecha_nacimiento")
+    private Date fechaNacimiento;
 
     @Enumerated(EnumType.STRING)
     private Sexo sexo;
@@ -40,7 +50,7 @@ public abstract class Persona extends Base {
     @JoinColumn(name = "nacionalidad_id")
     private Nacionalidad nacionalidad;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "domicilio_id")
     private Domicilio domicilio;
 }

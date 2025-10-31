@@ -5,9 +5,11 @@ import com.Ospuaye.BackendOspuaye.Entity.Localidad;
 import com.Ospuaye.BackendOspuaye.Repository.DomicilioRepository;
 import com.Ospuaye.BackendOspuaye.Repository.LocalidadRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DomicilioService extends BaseService<Domicilio, Long> {
@@ -27,14 +29,25 @@ public class DomicilioService extends BaseService<Domicilio, Long> {
     public Domicilio crear(Domicilio entity) throws Exception {
         if (entity == null) throw new IllegalArgumentException("El domicilio no puede ser nulo");
 
+        if (entity.getCalle() == null || entity.getCalle().isBlank())
+            throw new IllegalArgumentException("La calle es obligatoria");
+
         if (entity.getLocalidad() != null) {
             Long locId = entity.getLocalidad().getId();
             if (locId == null) throw new IllegalArgumentException("La localidad debe tener ID");
             if (!localidadRepository.existsById(locId))
                 throw new IllegalArgumentException("La localidad indicada no existe");
         }
+        // 🔹 Si piso o departamento vienen vacíos o nulos → poner "Indefinido"
+        if (entity.getManzanaPiso() == null || entity.getManzanaPiso().isBlank()) {
+            entity.setManzanaPiso("Indefinido");
+        }
+        if (entity.getCasaDepartamento() == null || entity.getCasaDepartamento().isBlank()) {
+            entity.setCasaDepartamento("Indefinido");
+        }
 
         if (entity.getActivo() == null) entity.setActivo(true);
+
         return domicilioRepository.save(entity);
     }
 
@@ -47,13 +60,13 @@ public class DomicilioService extends BaseService<Domicilio, Long> {
         Domicilio existente = domicilioRepository.findById(entity.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Domicilio no encontrado"));
 
-        existente.setCalle(entity.getCalle());
+        if (entity.getCalle() != null && !entity.getCalle().isBlank())
+            existente.setCalle(entity.getCalle());
         existente.setNumeracion(entity.getNumeracion());
         existente.setBarrio(entity.getBarrio());
         existente.setManzanaPiso(entity.getManzanaPiso());
         existente.setCasaDepartamento(entity.getCasaDepartamento());
         existente.setReferencia(entity.getReferencia());
-        existente.setTipo(entity.getTipo());
         if (entity.getActivo() != null) existente.setActivo(entity.getActivo());
 
         if (entity.getLocalidad() != null) {
@@ -74,8 +87,38 @@ public class DomicilioService extends BaseService<Domicilio, Long> {
         return domicilioRepository.findByLocalidad(loc);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public Optional<Domicilio> listarPorCalleYNumeracionYLocalidad(String calle, String numeracion, Long localidadId) {
+        try {
+            // Validar parámetros básicos
+            if (calle == null || calle.isBlank() || numeracion == null || numeracion.isBlank()) {
+                return Optional.empty(); // No buscamos si faltan datos esenciales
+            }
+
+            // Buscar según disponibilidad de localidad
+            if (localidadId == null) {
+                return domicilioRepository.findByCalleAndNumeracion(calle, numeracion);
+            }
+
+            return domicilioRepository.findByCalleAndNumeracionAndLocalidad_Id(calle, numeracion, localidadId);
+
+        } catch (Exception e) {
+            // Cualquier error inesperado devuelve vacío, sin romper el flujo del importador
+            return Optional.empty();
+        }
+    }
+
+
     @Transactional(readOnly = true)
     public List<Domicilio> listarActivos() {
         return domicilioRepository.findByActivoTrue();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Domicilio> listarActivosPorLocalidad(Long localidadId) throws Exception {
+        if (localidadId == null) throw new IllegalArgumentException("El ID de localidad es obligatorio");
+        if (!localidadRepository.existsById(localidadId))
+            throw new IllegalArgumentException("Localidad no encontrada");
+        return domicilioRepository.findByLocalidadIdAndActivoTrue(localidadId);
     }
 }

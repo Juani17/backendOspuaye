@@ -3,9 +3,11 @@ package com.Ospuaye.BackendOspuaye.Service;
 import com.Ospuaye.BackendOspuaye.Entity.Nacionalidad;
 import com.Ospuaye.BackendOspuaye.Repository.NacionalidadRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class NacionalidadService extends BaseService<Nacionalidad, Long> {
@@ -61,5 +63,31 @@ public class NacionalidadService extends BaseService<Nacionalidad, Long> {
                 .stream()
                 .filter(n -> Boolean.TRUE.equals(n.getActivo()))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Nacionalidad> ListarPorNombre(String nombre) {
+        if (nombre == null || nombre.isEmpty()) {
+            throw new IllegalArgumentException("El nombre de la Nacionalidad no puede ser nulo o vacio");
+        }
+        Optional<Nacionalidad> nacionalidad = nacionalidadRepository.findByNombre(nombre);
+
+        if (nacionalidad.isEmpty()) {
+            throw new IllegalArgumentException("No se encontro una nacionalidad con ese nombre");
+        }
+        return nacionalidad;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public Optional<Nacionalidad> ListarPorId(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("El id de la Nacionalidad no puede ser nulo o vacio");
+        }
+        Optional<Nacionalidad> nacionalidad = nacionalidadRepository.findById(id);
+
+        if (nacionalidad.isEmpty()) {
+            throw new IllegalArgumentException("No se encontro una nacionalidad con ese id");
+        }
+        return nacionalidad;
     }
 }

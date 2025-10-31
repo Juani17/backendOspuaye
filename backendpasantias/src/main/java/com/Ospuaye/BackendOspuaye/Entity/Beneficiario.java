@@ -1,13 +1,12 @@
 package com.Ospuaye.BackendOspuaye.Entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.Ospuaye.BackendOspuaye.Entity.Enum.EstadoCivil;
+
+import com.Ospuaye.BackendOspuaye.Entity.Enum.Incapacidad;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "beneficiarios")
@@ -24,12 +23,23 @@ public class Beneficiario extends Persona {
     private Boolean afiliadoSindical;
     private Boolean esJubilado;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_civil")
+    private EstadoCivil estadoCivil;
+
+    @EqualsAndHashCode.Exclude
     @OneToOne(mappedBy = "titular")
     @JsonBackReference
     private GrupoFamiliar grupoFamiliar;
 
+    @EqualsAndHashCode.Exclude
     @ManyToOne
     @JoinColumn(name = "empresa_id")
     @JsonBackReference(value = "empresa-beneficiarios")
     private Empresa empresa;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "incapacidad")
+    private Incapacidad incapacidad;
+
 }

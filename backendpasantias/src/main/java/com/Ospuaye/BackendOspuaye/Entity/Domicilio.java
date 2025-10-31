@@ -1,6 +1,6 @@
 package com.Ospuaye.BackendOspuaye.Entity;
 
-import com.Ospuaye.BackendOspuaye.Entity.Enum.Tipo;
+import com.Ospuaye.BackendOspuaye.Entity.Enum.TipoDeDomicilio;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,16 +25,17 @@ public class Domicilio extends Base {
     private String casaDepartamento;
 
     private String referencia;
-    private Boolean activo;
 
     @Enumerated(EnumType.STRING)
-    private Tipo tipo; // URBANO o RURAL
+    @Column(name = "tipo_domicilio")
+    private TipoDeDomicilio tipoDomicilio;
+
 
     @ManyToOne
     @JoinColumn(name = "localidad_id")
     private Localidad localidad;
 
-    @OneToOne(mappedBy = "domicilio")
+    @ManyToOne
     @JsonBackReference(value = "empresa-domicilio")
     private Empresa empresa;
 }

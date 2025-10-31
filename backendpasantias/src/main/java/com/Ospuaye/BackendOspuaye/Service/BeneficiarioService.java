@@ -128,9 +128,24 @@ public class BeneficiarioService extends BaseService<Beneficiario, Long> {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Beneficiario> buscarPorDni(Integer dni) {
+    public Optional<Beneficiario> buscarPorDni(Long dni) {
         if (dni == null) return Optional.empty();
         return beneficiarioRepository.findByDni(dni); // Ahora directo, ya que DNI está en Persona
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Beneficiario> ListarPorCuil(Long cuil) throws Exception {
+        if (cuil == null) {
+            throw new IllegalArgumentException("El CUIL no puede ser nulo ni vacío");
+        }
+
+        Optional<Beneficiario> beneficiario = beneficiarioRepository.findByCuil(cuil);
+
+        if (beneficiario.isEmpty()) {
+            throw new IllegalArgumentException("No se encontró un Beneficiario con el CUIL especificado");
+        }
+
+        return beneficiario;
     }
 
     @Transactional(readOnly = true)

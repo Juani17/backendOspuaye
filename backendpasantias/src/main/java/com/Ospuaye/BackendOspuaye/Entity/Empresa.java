@@ -1,6 +1,5 @@
 package com.Ospuaye.BackendOspuaye.Entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,8 +21,6 @@ public class Empresa extends Base {
 
     @Column(name = "razon_social", nullable = false)
     private String razonSocial;
-
-    private Boolean activo;
 
     @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = false)
     @JsonManagedReference(value = "empresa-beneficiarios")
