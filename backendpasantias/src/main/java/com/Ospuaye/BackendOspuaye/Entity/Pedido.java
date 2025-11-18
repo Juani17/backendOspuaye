@@ -1,12 +1,14 @@
 package com.Ospuaye.BackendOspuaye.Entity;
 
 import com.Ospuaye.BackendOspuaye.Entity.Enum.Estado;
+import com.Ospuaye.BackendOspuaye.Entity.Enum.PedidoTipo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
 import java.util.Date;
 import java.util.List;
 
@@ -19,7 +21,7 @@ import java.util.List;
 @AllArgsConstructor
 @SuperBuilder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public abstract class Pedido extends Base {
+public class Pedido extends BaseNombrable {
 
     private String nombre;
 
@@ -54,12 +56,17 @@ public abstract class Pedido extends Base {
     @JoinColumn(name = "paciente_id")
     private Familiar paciente;
 
-    @ManyToOne
-    @JoinColumn(name = "medico_id")
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "medico_id", nullable = true)
     private Medico medico;
 
     @JsonFormat(pattern = "dd-MM-yyyy")
     private Date fechaRevision;
 
+
     private String observacionMedico;
+
+    @Enumerated(EnumType.STRING)
+    private PedidoTipo pedidoTipo;
+
 }
