@@ -1,12 +1,12 @@
 services:
-  backendospaye:               # nombre del servicio en minúsculas para evitar problemas
-    build: ./backendpasantias
+  backendospaye:
+    build: ./backendOspuaye
     image: backendospaye:latest
     mem_limit: 512m
     ports:
       - "9000:9000"
     environment:
-      DB_URL: jdbc:mysql://ospuaye:3306/backendospuaye?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://ospuaye:3306/backendospuaye
       DB_USER_NAME: root
       DB_PASSWORD: 1234
     restart: always
@@ -15,7 +15,8 @@ services:
         condition: service_healthy
 
   ospuaye:
-    image: mysql:9.2.0
+    image: mysql:8.0
+    container_name: mysql_ospuaye
     ports:
       - "3307:3306"
     environment:
@@ -24,6 +25,7 @@ services:
       MYSQL_DATABASE: backendospuaye
     restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      timeout: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
       retries: 10
