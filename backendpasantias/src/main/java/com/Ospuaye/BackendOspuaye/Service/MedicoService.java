@@ -1,17 +1,20 @@
 package com.Ospuaye.BackendOspuaye.Service;
 
+import com.Ospuaye.BackendOspuaye.Dto.UpdateMedicoDTO;
 import com.Ospuaye.BackendOspuaye.Entity.Medico;
 import com.Ospuaye.BackendOspuaye.Entity.Usuario;
 import com.Ospuaye.BackendOspuaye.Entity.Area;
 import com.Ospuaye.BackendOspuaye.Repository.MedicoRepository;
 import com.Ospuaye.BackendOspuaye.Repository.UsuarioRepository;
 import com.Ospuaye.BackendOspuaye.Repository.AreaRepository;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -137,4 +140,79 @@ public class MedicoService extends BaseService<Medico, Long> {
                 .orElseThrow(() -> new IllegalArgumentException("Área no encontrada"));
         return medicoRepository.findByArea(a);
     }
+
+    @Transactional
+    public Medico update(Long id, UpdateMedicoDTO dto) {
+
+        // Buscar médico
+        Medico medico = medicoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Médico no encontrado"));
+
+        // Actualizar datos básicos
+        medico.setNombre(dto.getNombre());
+        medico.setApellido(dto.getApellido());
+        medico.setDni(dto.getDni());
+        medico.setCuil(dto.getCuil());
+        medico.setTelefono(dto.getTelefono());
+        medico.setSexo(dto.getSexo());
+        medico.setEstado(dto.getEstado());
+        medico.setMatricula(dto.getMatricula());
+
+        // Actualizar área (si viene)
+        if (dto.getAreaId() != null) {
+            Area area = areaRepository.findById(dto.getAreaId())
+                    .orElseThrow(() -> new RuntimeException("Área no encontrada"));
+            medico.setArea(area);
+        }
+
+        // Actualizar usuario interno (email y/o contraseña)
+        if (medico.getUsuario() != null) {
+            Usuario usuario = medico.getUsuario();
+
+            if (dto.getEmail() != null) {
+                usuario.setEmail(dto.getEmail());
+            }
+
+            if (dto.getContrasena() != null && !dto.getContrasena().isBlank()) {
+                usuario.setContrasena(dto.getContrasena());
+            }
+
+            usuarioRepository.save(usuario);
+        }
+
+        // Guardar médico
+        return medicoRepository.save(medico);
+    }
+
+
+    @Transactional(readOnly = true)
+    public ByteArrayResource exportarTXT() {
+
+        List<Medico> medicos = medicoRepository.findAll();
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("id|nombre|apellido|dni|cuil|telefono|matricula|area|correo\n");
+
+        for (Medico m : medicos) {
+            sb.append(m.getId()).append("|")
+                    .append(m.getNombre() != null ? m.getNombre() : "").append("|")
+                    .append(m.getApellido() != null ? m.getApellido() : "").append("|")
+                    .append(m.getDni() != null ? m.getDni() : "").append("|")
+                    .append(m.getCuil() != null ? m.getCuil() : "").append("|")
+                    .append(m.getTelefono() != null ? m.getTelefono() : "").append("|")
+                    .append(m.getMatricula() != null ? m.getMatricula() : "").append("|")
+                    .append(m.getArea() != null ? m.getArea().getNombre() : "").append("|")
+                    .append(m.getCorreoElectronico() != null ? m.getCorreoElectronico() : "")
+                    .append("\n");
+        }
+
+        return new ByteArrayResource(sb.toString().getBytes());
+    }
+
+    // Utilidad para evitar nulls
+    private String safe(Object o) {
+        return o == null ? "" : o.toString();
+    }
+
+
 }

@@ -1,11 +1,17 @@
 package com.Ospuaye.BackendOspuaye.Service;
 
+import com.Ospuaye.BackendOspuaye.Dto.DocumentoDTO;
+import com.Ospuaye.BackendOspuaye.Dto.PedidoOftalmologiaDTO;
+import com.Ospuaye.BackendOspuaye.Dto.PedidoOrtopediaDTO;
 import com.Ospuaye.BackendOspuaye.Entity.*;
 import com.Ospuaye.BackendOspuaye.Entity.Enum.Estado;
 import com.Ospuaye.BackendOspuaye.Entity.Enum.PedidoTipo;
 import com.Ospuaye.BackendOspuaye.Repository.PedidoOrtopediaRepository;
 import com.Ospuaye.BackendOspuaye.Repository.PedidoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +27,28 @@ public class PedidoOrtopediaService extends PedidoService {
     public PedidoOrtopediaService(PedidoRepository pedidoRepository) {
         super(pedidoRepository);
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Page<Pedido> buscar(String query, int page, int size) {
+        if (page < 0) page = 0;
+        if (size <= 0) size = 5;
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (query == null || query.trim().isEmpty()) {
+            return pedidoOrtopediaRepository.findAll(pageable).map(p -> (Pedido) p);
+        }
+
+        String q = query.trim();
+        return pedidoOrtopediaRepository
+                .findByBeneficiario_NombreContainingIgnoreCaseOrGrupoFamiliar_NombreGrupoContainingIgnoreCaseOrEmpresaContainingIgnoreCaseOrDelegacionContainingIgnoreCaseOrPaciente_NombreContainingIgnoreCaseOrMedico_NombreContainingIgnoreCaseOrMotivoConsultaContainingIgnoreCase(
+                        q, q, q, q, q, q, q, pageable
+                ).map(p -> (Pedido) p);
+    }
+
+
+
 
     // 🧾 CREAR PEDIDO ORTOPEDIA (con validaciones completas)
     @Transactional
@@ -134,5 +162,43 @@ public class PedidoOrtopediaService extends PedidoService {
                 "Cambio de estado a " + nuevoEstado);
 
         return pedidoOrtopediaRepository.save(pedido);
+    }
+
+    public PedidoOrtopediaDTO obtenerDto(Long id) {
+        PedidoOrtopedia pedido = pedidoOrtopediaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        PedidoOrtopediaDTO dto = new PedidoOrtopediaDTO();
+        dto.setId(pedido.getId());
+        dto.setNombre(pedido.getNombre());
+        dto.setMotivoConsulta(pedido.getMotivoConsulta());
+        dto.setRecetaMedica(pedido.getRecetaMedica());
+        dto.setFechaRevision(pedido.getFechaRevision());
+        dto.setObservacionMedico(pedido.getObservacionMedico());
+        dto.setBeneficiario(pedido.getBeneficiario());
+        dto.setDni(pedido.getDni());
+        dto.setTelefono(pedido.getTelefono());
+        dto.setEmpresa(pedido.getEmpresa());
+        dto.setDelegacion(pedido.getDelegacion());
+        dto.setMedico(pedido.getMedico());
+
+        // convertir documentos a DTO
+        List<DocumentoDTO> documentos = pedido.getDocumentos().stream()
+                .map(doc -> {
+                    DocumentoDTO d = new DocumentoDTO();
+                    d.setId(doc.getId());
+                    d.setNombreArchivo(doc.getNombreArchivo());
+                    d.setUrl("/api/documentos/" + doc.getId()); // <--- URL de descarga
+                    return d;
+                })
+                .toList();
+
+        dto.setDocumentos(documentos);
+
+        return dto;
+    }
+    @Transactional(readOnly = true)
+    public List<PedidoOrtopedia> listarPedidosOrtopediaSinMedico() {
+        return pedidoOrtopediaRepository.findByMedicoIsNull();
     }
 }

@@ -1,17 +1,19 @@
 package com.Ospuaye.BackendOspuaye.Service;
 
+import com.Ospuaye.BackendOspuaye.Dto.DocumentoDTO;
+import com.Ospuaye.BackendOspuaye.Dto.PedidoOftalmologiaDTO;
+import com.Ospuaye.BackendOspuaye.Entity.*;
 import com.Ospuaye.BackendOspuaye.Entity.Enum.PedidoTipo;
-import com.Ospuaye.BackendOspuaye.Entity.PedidoOftalmologia;
-import com.Ospuaye.BackendOspuaye.Entity.Documento;
-import com.Ospuaye.BackendOspuaye.Entity.Usuario;
-import com.Ospuaye.BackendOspuaye.Entity.Beneficiario;
-import com.Ospuaye.BackendOspuaye.Entity.Medico;
 import com.Ospuaye.BackendOspuaye.Entity.Enum.Estado;
 import com.Ospuaye.BackendOspuaye.Repository.PedidoOftalmologiaRepository;
 import com.Ospuaye.BackendOspuaye.Repository.PedidoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Date;
 import java.util.List;
@@ -21,9 +23,31 @@ public class PedidoOftalmologiaService extends PedidoService {
 
     @Autowired
     private PedidoOftalmologiaRepository pedidoOftalmologiaRepository;
+    private DocumentoService documentoService;
 
     public PedidoOftalmologiaService(PedidoRepository pedidoRepository) {
         super(pedidoRepository);
+    }
+
+
+    @Transactional(readOnly = true)
+    @Override
+    public Page<Pedido> buscar(String query, int page, int size) {
+        if (page < 0) page = 0;
+        if (size <= 0) size = 5;
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (query == null || query.trim().isEmpty()) {
+            // map() convierte cada PedidoOftalmologia en Pedido
+            return pedidoOftalmologiaRepository.findAll(pageable).map(p -> (Pedido) p);
+        }
+
+        String q = query.trim();
+        return pedidoOftalmologiaRepository
+                .findByBeneficiario_NombreContainingIgnoreCaseOrGrupoFamiliar_NombreGrupoContainingIgnoreCaseOrEmpresaContainingIgnoreCaseOrDelegacionContainingIgnoreCaseOrPaciente_NombreContainingIgnoreCaseOrMedico_NombreContainingIgnoreCaseOrMotivoConsultaContainingIgnoreCase(
+                        q, q, q, q, q, q, q, pageable
+                ).map(p -> (Pedido) p);
     }
 
     // NOTE: NO definir constructor que haga super(pedidoOftalmologiaRepository)
@@ -108,15 +132,20 @@ public class PedidoOftalmologiaService extends PedidoService {
     }
 
     @Transactional
-    public PedidoOftalmologia actualizarPedidoOftalmologia(Long id, PedidoOftalmologia datosActualizados) throws Exception {
-        // ✅ Reutiliza la lógica común de PedidoService
+    public PedidoOftalmologia actualizarPedidoOftalmologia(
+            Long id,
+            PedidoOftalmologia datosActualizados,
+            List<MultipartFile> documentos
+    ) throws Exception {
+
+        // Reutiliza lógica de Pedido base
         super.actualizarPedido(id, datosActualizados);
 
-        // 🔍 Recupera el pedido específico de oftalmología
+        // Pedido existente
         PedidoOftalmologia existente = pedidoOftalmologiaRepository.findById(id)
                 .orElseThrow(() -> new Exception("No se encontró el pedido de oftalmología con ID: " + id));
 
-        // ⚙️ Actualiza campos específicos del tipo Oftalmología
+        // Campos específicos
         if (datosActualizados.getMotivoConsulta() != null && !datosActualizados.getMotivoConsulta().isBlank()) {
             existente.setMotivoConsulta(datosActualizados.getMotivoConsulta());
         }
@@ -129,13 +158,83 @@ public class PedidoOftalmologiaService extends PedidoService {
             existente.setRecetaMedica(datosActualizados.getRecetaMedica());
         }
 
-        // 💾 Guardar cambios finales
+        /* ======================================================
+         *   PROCESAR DOCUMENTOS ADJUNTADOS (SI VIENEN)
+         * ====================================================== */
+        if (documentos != null && !documentos.isEmpty()) {
+
+            for (MultipartFile archivo : documentos) {
+
+                // Guardar archivo físico
+                String path = documentoService.handleFileUpload(archivo);
+
+                // Crear entidad Documento
+                Documento doc = new Documento();
+                doc.setNombreArchivo(archivo.getOriginalFilename());
+                doc.setPath(path);
+                doc.setFechaSubida(new Date());
+                doc.setPedido(existente); // RELACIÓN
+                doc.setSubidoPor(existente.getBeneficiario().getUsuario()); // opcional, según tu lógica
+
+                // Agregar al pedido
+                existente.getDocumentos().add(doc);
+            }
+        }
+
+        // Guardar cambios totales
         PedidoOftalmologia actualizado = pedidoOftalmologiaRepository.save(existente);
 
-        // 🕐 Registrar movimiento (puede ser distinto del genérico)
+        // Registrar movimiento
         registrarMovimiento(actualizado, actualizado.getEstado(),
-                actualizado.getBeneficiario().getUsuario(), "Pedido de oftalmología actualizado");
+                actualizado.getBeneficiario().getUsuario(),
+                "Pedido de oftalmología actualizado");
 
         return actualizado;
     }
+
+
+    public PedidoOftalmologia obtenerPorId(Long id) {
+        return pedidoOftalmologiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+    }
+
+    public PedidoOftalmologiaDTO obtenerDto(Long id) {
+        PedidoOftalmologia pedido = pedidoOftalmologiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        PedidoOftalmologiaDTO dto = new PedidoOftalmologiaDTO();
+        dto.setId(pedido.getId());
+        dto.setNombre(pedido.getNombre());
+        dto.setMotivoConsulta(pedido.getMotivoConsulta());
+        dto.setUsaLentes(pedido.getUsaLentes());
+        dto.setRecetaMedica(pedido.getRecetaMedica());
+        dto.setFechaRevision(pedido.getFechaRevision());
+        dto.setObservacionMedico(pedido.getObservacionMedico());
+        dto.setBeneficiario(pedido.getBeneficiario());
+        dto.setDni(pedido.getDni());
+        dto.setTelefono(pedido.getTelefono());
+        dto.setEmpresa(pedido.getEmpresa());
+        dto.setDelegacion(pedido.getDelegacion());
+        dto.setMedico(pedido.getMedico());
+
+        // convertir documentos a DTO
+        List<DocumentoDTO> documentos = pedido.getDocumentos().stream()
+                .map(doc -> {
+                    DocumentoDTO d = new DocumentoDTO();
+                    d.setId(doc.getId());
+                    d.setNombreArchivo(doc.getNombreArchivo());
+                    d.setUrl("/api/documentos/" + doc.getId()); // <--- URL de descarga
+                    return d;
+                })
+                .toList();
+
+        dto.setDocumentos(documentos);
+
+        return dto;
+    }
+    @Transactional(readOnly = true)
+    public List<PedidoOftalmologia> listarPedidosOftalmologiaSinMedico() {
+        return pedidoOftalmologiaRepository.findByMedicoIsNull();
+    }
+
 }

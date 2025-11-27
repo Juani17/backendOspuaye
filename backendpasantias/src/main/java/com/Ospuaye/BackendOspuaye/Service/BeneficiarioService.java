@@ -5,11 +5,13 @@ import com.Ospuaye.BackendOspuaye.Entity.Empresa;
 import com.Ospuaye.BackendOspuaye.Repository.BeneficiarioRepository;
 import com.Ospuaye.BackendOspuaye.Repository.EmpresaRepository;
 import com.Ospuaye.BackendOspuaye.Repository.UsuarioRepository;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -182,4 +184,65 @@ public class BeneficiarioService extends BaseService<Beneficiario, Long> {
     public List<Beneficiario> listarAfiliadosSindicato() {
         return beneficiarioRepository.findByAfiliadoSindicalTrue();
     }
+    @Transactional(readOnly = true)
+    public List<Beneficiario> buscarSimple(String filtro) {
+
+        if (filtro == null || filtro.trim().isEmpty()) {
+            return List.of(); // ❌ No devolvemos miles de registros
+        }
+
+        String f = filtro.trim();
+
+        Long dni = null;
+        Long cuil = null;
+
+        if (f.matches("\\d+")) {  // Si es número, lo usamos para dni/cuil
+            try {
+                Long num = Long.parseLong(f);
+                dni = num;
+                cuil = num;
+            } catch (Exception ignored) {}
+        }
+
+        return beneficiarioRepository
+                .findTop20ByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCaseOrDniEqualsOrCuilEquals(
+                        f, f, dni, cuil
+                );
+    }
+
+
+    //Agrego logica para descargar beneficiarios de la base
+    @Transactional(readOnly = true)
+    public ByteArrayResource exportarTXT() {
+
+        List<Beneficiario> lista = beneficiarioRepository.findAll();
+
+        StringBuilder sb = new StringBuilder();
+
+        for (Beneficiario b : lista) {
+
+            String linea = String.join("|",
+                    safe(b.getId()),
+                    safe(b.getNombre()),
+                    safe(b.getApellido()),
+                    safe(b.getDni()),
+                    safe(b.getCuil()),
+                    safe(b.getEmpresa() != null ? b.getEmpresa().getId() : ""),
+                    safe(b.getCorreoElectronico()),
+                    safe(b.getTelefono()),
+                    safe(b.getFechaNacimiento())
+            );
+
+            sb.append(linea).append("\n");
+        }
+
+        return new ByteArrayResource(sb.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String safe(Object o) {
+        return o == null ? "" : o.toString();
+    }
+
+
+
 }

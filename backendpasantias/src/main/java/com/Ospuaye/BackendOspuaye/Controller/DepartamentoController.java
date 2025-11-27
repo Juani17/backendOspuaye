@@ -45,4 +45,29 @@ public class DepartamentoController extends BaseController<Departamento, Long> {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<?> buscar(
+            @RequestParam(defaultValue = "") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        try {
+            return ResponseEntity.ok(departamentoService.buscar(query, page, size));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/buscar-simple")
+    public ResponseEntity<?> buscarSimple(@RequestParam String nombre) {
+        try {
+            return ResponseEntity.ok(departamentoService.buscarSimplePorNombre(nombre));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al buscar departamentos");
+        }
+    }
+
+
 }
