@@ -1,15 +1,18 @@
 package com.Ospuaye.BackendOspuaye.Service;
 
 import com.Ospuaye.BackendOspuaye.Entity.Beneficiario;
+import com.Ospuaye.BackendOspuaye.Entity.Familiar;
 import com.Ospuaye.BackendOspuaye.Entity.GrupoFamiliar;
 import com.Ospuaye.BackendOspuaye.Repository.BeneficiarioRepository;
 import com.Ospuaye.BackendOspuaye.Repository.GrupoFamiliarRepository;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Optional;
 
@@ -99,4 +102,84 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
 
         return grupoFamiliar;
     }
+
+    //metodo para bajar txt de grupos familiares
+    @Transactional(readOnly = true)
+    public ByteArrayResource exportarTXT(Long grupoId) {
+
+        GrupoFamiliar g = grupoFamiliarRepository.findById(grupoId)
+                .orElseThrow(() -> new RuntimeException("Grupo familiar no encontrado"));
+
+        StringBuilder sb = new StringBuilder();
+
+        // =======================
+        // TITULAR
+        // =======================
+        sb.append("=== TITULAR DEL GRUPO ===\n");
+        sb.append(
+                pad("id", 6) + "|" +
+                        pad("nombre", 15) + "|" +
+                        pad("apellido", 15) + "|" +
+                        pad("dni", 12) + "|" +
+                        pad("cuil", 15) + "|" +
+                        pad("correo", 25) + "|" +
+                        pad("telefono", 12) + "|" +
+                        pad("fechaNacimiento", 20)
+        ).append("\n");
+
+        var t = g.getTitular();
+
+        sb.append(
+                pad(t.getId(), 6) + "|" +
+                        pad(t.getNombre(), 15) + "|" +
+                        pad(t.getApellido(), 15) + "|" +
+                        pad(t.getDni(), 12) + "|" +
+                        pad(t.getCuil(), 15) + "|" +
+                        pad(t.getUsuario() != null ? t.getUsuario().getEmail() : "Sin correo", 25) + "|" +
+                        pad(t.getTelefono(), 12) + "|" +
+                        pad(t.getFechaNacimiento(), 20)
+        ).append("\n\n");
+
+
+        // =======================
+        // FAMILIARES
+        // =======================
+        sb.append("=== FAMILIARES ===\n");
+
+        sb.append(
+                pad("id", 6) + "|" +
+                        pad("nombre", 15) + "|" +
+                        pad("apellido", 15) + "|" +
+                        pad("dni", 12) + "|" +
+                        pad("cuil", 15) + "|" +
+                        pad("parentesco", 12) + "|" +
+                        pad("correo", 25) + "|" +
+                        pad("telefono", 12) + "|" +
+                        pad("fechaNacimiento", 20)
+        ).append("\n");
+
+        for (Familiar f : g.getFamiliares()) {
+
+            sb.append(
+                    pad(f.getId(), 6) + "|" +
+                            pad(f.getNombre(), 15) + "|" +
+                            pad(f.getApellido(), 15) + "|" +
+                            pad(f.getDni(), 12) + "|" +
+                            pad(f.getCuil(), 15) + "|" +
+                            pad(f.getTipoParentesco(), 12) + "|" +
+                            pad(f.getCorreoElectronico(), 25) + "|" +
+                            pad(f.getTelefono(), 12) + "|" +
+                            pad(f.getFechaNacimiento(), 20)
+            ).append("\n");
+        }
+
+        return new ByteArrayResource(sb.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String pad(Object o, int length) {
+        String s = o == null ? "" : o.toString();
+        return String.format("%-" + length + "s", s);
+    }
+
 }
+

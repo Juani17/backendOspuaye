@@ -2,6 +2,9 @@ package com.Ospuaye.BackendOspuaye.Controller;
 
 import com.Ospuaye.BackendOspuaye.Entity.GrupoFamiliar;
 import com.Ospuaye.BackendOspuaye.Service.GrupoFamiliarService;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,5 +51,17 @@ public class GrupoFamiliarController extends BaseController<GrupoFamiliar, Long>
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
+    }
+
+    @GetMapping("/{id}/export")
+    public ResponseEntity<Resource> exportarGrupo(@PathVariable Long id) {
+
+        ByteArrayResource resource = service.exportarTXT(id);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"grupo_familiar_" + id + ".txt\"")
+                .header(HttpHeaders.CONTENT_TYPE, "text/plain; charset=UTF-8")
+                .body(resource);
     }
 }
