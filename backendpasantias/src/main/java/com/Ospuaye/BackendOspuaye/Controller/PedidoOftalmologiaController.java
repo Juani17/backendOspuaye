@@ -3,12 +3,14 @@ package com.Ospuaye.BackendOspuaye.Controller;
 import com.Ospuaye.BackendOspuaye.Dto.PedidoOftalmologiaDTO;
 import com.Ospuaye.BackendOspuaye.Entity.Documento;
 import com.Ospuaye.BackendOspuaye.Entity.Enum.Estado;
+import com.Ospuaye.BackendOspuaye.Entity.Pedido;
 import com.Ospuaye.BackendOspuaye.Entity.PedidoOftalmologia;
 import com.Ospuaye.BackendOspuaye.Entity.PedidoOrtopedia;
 import com.Ospuaye.BackendOspuaye.Service.DocumentoService;
 import com.Ospuaye.BackendOspuaye.Service.PedidoOftalmologiaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -39,14 +41,12 @@ public class PedidoOftalmologiaController {
             List<Documento> documentos = new ArrayList<>();
             if (files != null) {
                 for (MultipartFile file : files) {
-                    String msg = documentoService.handleFileUpload(file);
-                    if (!"Archivo cargado correctamente".equals(msg)) {
-                        return ResponseEntity.badRequest().body(msg);
-                    }
+                    String nombreArchivo = documentoService.handleFileUpload(file);
+                    // ✅ Guardar solo el nombre del archivo, no la ruta completa
                     Documento doc = Documento.builder()
                             .nombreArchivo(file.getOriginalFilename())
-                            .path("C://Ospuaye/documentos/" + file.getOriginalFilename())
-                            .observacion("Estudio oftalmológico adjunto")
+                            .path(nombreArchivo)  // Solo el nombre único generado
+                            .observacion("Documento adjunto")
                             .build();
                     documentos.add(doc);
                 }
@@ -135,18 +135,21 @@ public class PedidoOftalmologiaController {
     }
 
     @GetMapping("/buscar")
-    public ResponseEntity<?> buscar(
-            @RequestParam(defaultValue = "") String query,
+    public ResponseEntity<Page<Pedido>> buscar(
+            @RequestParam(required = false) String query,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size
-    ) {
-        try {
-            // 🔹 Llama al método buscar de PedidoOftalmologiaService
-            return ResponseEntity.ok(pedidoOftalmologiaService.buscar(query, page, size));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
+            @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(pedidoOftalmologiaService.buscar(query, page, size));
     }
+
+    @GetMapping("/buscar-inactivos")
+    public ResponseEntity<Page<Pedido>> buscarInactivos(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(pedidoOftalmologiaService.buscarInactivos(query, page, size));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PedidoOftalmologiaDTO> obtenerPedidoPorId(@PathVariable Long id) {
         PedidoOftalmologiaDTO dto = pedidoOftalmologiaService.obtenerDto(id);

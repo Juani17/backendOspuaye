@@ -29,6 +29,9 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
         this.beneficiarioRepository = beneficiarioRepository;
     }
 
+    // ===============================================
+    // BUSQUEDA GLOBAL + PAGINADO (ACTIVOS)
+    // ===============================================
     @Transactional(readOnly = true)
     public Page<GrupoFamiliar> buscar(String query, int page, int size) {
         if (page < 0) page = 0;
@@ -37,16 +40,33 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
         Pageable pageable = PageRequest.of(page, size);
 
         if (query == null || query.trim().isEmpty()) {
-            return super.paginar(page, size);
+            return super.paginar(page, size); // ✅ activos por defecto
         }
 
         String q = query.trim();
-
-        return grupoFamiliarRepository
-                .findByNombreGrupoContainingIgnoreCaseOrTitular_NombreContainingIgnoreCaseOrTitular_ApellidoContainingIgnoreCase(
-                        q, q, q, pageable
-                );
+        return grupoFamiliarRepository.findByNombreGrupoContainingIgnoreCaseAndActivoTrueOrTitular_NombreContainingIgnoreCaseAndActivoTrueOrTitular_ApellidoContainingIgnoreCaseAndActivoTrue(
+                q, q, q, pageable);
     }
+
+    // ===============================================
+    // BUSQUEDA GLOBAL + PAGINADO (INACTIVOS)
+    // ===============================================
+    @Transactional(readOnly = true)
+    public Page<GrupoFamiliar> buscarInactivos(String query, int page, int size) {
+        if (page < 0) page = 0;
+        if (size <= 0) size = 5;
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (query == null || query.trim().isEmpty()) {
+            return super.paginarInactivos(page, size); // ✅ inactivos por defecto
+        }
+
+        String q = query.trim();
+        return grupoFamiliarRepository.findByNombreGrupoContainingIgnoreCaseAndActivoFalseOrTitular_NombreContainingIgnoreCaseAndActivoFalseOrTitular_ApellidoContainingIgnoreCaseAndActivoFalse(
+                q, q, q, pageable);
+    }
+
 
     @Override
     public GrupoFamiliar crear(GrupoFamiliar gf) throws Exception {
@@ -103,7 +123,7 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
         return grupoFamiliar;
     }
 
-    //metodo para bajar txt de grupos familiares
+    //metodod e exportar txt
     @Transactional(readOnly = true)
     public ByteArrayResource exportarTXT(Long grupoId) {
 
@@ -112,22 +132,21 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
 
         StringBuilder sb = new StringBuilder();
 
-        // =======================
-        // TITULAR
-        // =======================
-        sb.append("=== TITULAR DEL GRUPO ===\n");
+        // ================= TITULAR =====================
+        sb.append("=== TITULAR ===\n");
         sb.append(
                 pad("id", 6) + "|" +
                         pad("nombre", 15) + "|" +
                         pad("apellido", 15) + "|" +
                         pad("dni", 12) + "|" +
                         pad("cuil", 15) + "|" +
-                        pad("correo", 25) + "|" +
-                        pad("telefono", 12) + "|" +
+                        pad("correo", 30) + "|" +
+                        pad("telefono", 15) + "|" +
                         pad("fechaNacimiento", 20)
         ).append("\n");
 
         var t = g.getTitular();
+        String correoTit = t.getUsuario() != null ? safe(t.getUsuario().getEmail()) : "";
 
         sb.append(
                 pad(t.getId(), 6) + "|" +
@@ -135,26 +154,22 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
                         pad(t.getApellido(), 15) + "|" +
                         pad(t.getDni(), 12) + "|" +
                         pad(t.getCuil(), 15) + "|" +
-                        pad(t.getUsuario() != null ? t.getUsuario().getEmail() : "Sin correo", 25) + "|" +
-                        pad(t.getTelefono(), 12) + "|" +
+                        pad(correoTit, 30) + "|" +
+                        pad(t.getTelefono(), 15) + "|" +
                         pad(t.getFechaNacimiento(), 20)
         ).append("\n\n");
 
-
-        // =======================
-        // FAMILIARES
-        // =======================
+        // ================= FAMILIARES =====================
         sb.append("=== FAMILIARES ===\n");
-
         sb.append(
                 pad("id", 6) + "|" +
                         pad("nombre", 15) + "|" +
                         pad("apellido", 15) + "|" +
                         pad("dni", 12) + "|" +
                         pad("cuil", 15) + "|" +
-                        pad("parentesco", 12) + "|" +
-                        pad("correo", 25) + "|" +
-                        pad("telefono", 12) + "|" +
+                        pad("parentesco", 15) + "|" +
+                        pad("correo", 30) + "|" +
+                        pad("telefono", 15) + "|" +
                         pad("fechaNacimiento", 20)
         ).append("\n");
 
@@ -166,9 +181,9 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
                             pad(f.getApellido(), 15) + "|" +
                             pad(f.getDni(), 12) + "|" +
                             pad(f.getCuil(), 15) + "|" +
-                            pad(f.getTipoParentesco(), 12) + "|" +
-                            pad(f.getCorreoElectronico(), 25) + "|" +
-                            pad(f.getTelefono(), 12) + "|" +
+                            pad(f.getTipoParentesco(), 15) + "|" +
+                            pad(f.getCorreoElectronico(), 30) + "|" +
+                            pad(f.getTelefono(), 15) + "|" +
                             pad(f.getFechaNacimiento(), 20)
             ).append("\n");
         }
@@ -176,10 +191,14 @@ public class GrupoFamiliarService extends BaseService<GrupoFamiliar, Long> {
         return new ByteArrayResource(sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 
+    private String safe(Object o) {
+        return o == null ? "" : o.toString();
+    }
+
     private String pad(Object o, int length) {
-        String s = o == null ? "" : o.toString();
+        String s = safe(o);
         return String.format("%-" + length + "s", s);
     }
 
-}
 
+}
